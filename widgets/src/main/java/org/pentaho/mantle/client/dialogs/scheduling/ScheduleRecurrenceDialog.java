@@ -12,7 +12,7 @@
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU Lesser General Public License for more details.
  *
- * Copyright (c) 2002-2018 Hitachi Vantara..  All rights reserved.
+ * Copyright (c) 2002-2020 Hitachi Vantara..  All rights reserved.
  */
 
 package org.pentaho.mantle.client.dialogs.scheduling;
@@ -20,6 +20,7 @@ package org.pentaho.mantle.client.dialogs.scheduling;
 import java.util.Date;
 import java.util.List;
 
+import com.google.gwt.i18n.client.NumberFormat;
 import org.pentaho.gwt.widgets.client.dialogs.IDialogCallback;
 import org.pentaho.gwt.widgets.client.dialogs.MessageDialogBox;
 import org.pentaho.gwt.widgets.client.dialogs.PromptDialogBox;
@@ -79,6 +80,9 @@ import com.google.gwt.user.client.ui.Widget;
 public class ScheduleRecurrenceDialog extends AbstractWizardDialog {
 
   private static final String HOUR_MINUTE_SECOND = "h:mm:ss a";
+
+  private static final NumberFormat FOUR_DIGITS_FORMAT = NumberFormat.getFormat( "0000" );
+  private static final NumberFormat TWO_DIGITS_FORMAT = NumberFormat.getFormat( "00" );
 
   private final String moduleBaseURL = GWT.getModuleBaseURL();
   private final String moduleName = GWT.getModuleName();
@@ -350,10 +354,12 @@ public class ScheduleRecurrenceDialog extends AbstractWizardDialog {
       int index = 0;
 
       String targetTimezone = scheduleEditor.getTargetTimezone();
+      String serverTimezone = scheduleEditor.getServerTimezone();
       int weekDayVariance = 0;
 
       if ( targetTimezone != null ) {
-        weekDayVariance = TimeUtil.getDayVariance( startDate.getHours(), targetTimezone );
+        weekDayVariance =
+          TimeUtil.getDayVariance( targetTimezone, serverTimezone, startDate.getHours(), startDate.getMinutes() );
       }
 
       for ( DayOfWeek dayOfWeek : daysOfWeek ) {
@@ -394,18 +400,14 @@ public class ScheduleRecurrenceDialog extends AbstractWizardDialog {
     ScheduleType scheduleType = scheduleEditorWizardPanel.getScheduleType();
     Date startDate = scheduleEditorWizardPanel.getStartDate();
     String startTime = scheduleEditorWizardPanel.getStartTime();
+    String timezone = scheduleEditorWizardPanel.getTimeZoneText();
 
     // For blockout periods, we need the blockout start time.
     if ( isBlockoutDialog ) {
       startTime = scheduleEditorWizardPanel.getBlockoutStartTime();
     }
 
-    int startHour = getStartHour( startTime );
-    int startMin = getStartMin( startTime );
-    int startYear = startDate.getYear();
-    int startMonth = startDate.getMonth();
-    int startDay = startDate.getDate();
-    Date startDateTime = new Date( startYear, startMonth, startDay, startHour, startMin );
+    Date startDateTime = getDateTime( timezone, startDate, startTime );
     Date endDate = scheduleEditorWizardPanel.getEndDate();
     MonthOfYear monthOfYear = scheduleEditor.getRecurrenceEditor().getSelectedMonth();
     List<DayOfWeek> daysOfWeek = scheduleEditor.getRecurrenceEditor().getSelectedDaysOfWeek();
@@ -446,7 +448,7 @@ public class ScheduleRecurrenceDialog extends AbstractWizardDialog {
       }
     } else if ( scheduleType == ScheduleType.CRON ) { // Cron jobs
       schedule.put( "cronJobTrigger", getJsonCronTrigger( scheduleEditor.getCronString(), startDateTime, endDate ) ); //$NON-NLS-1$
-    } else if ( ( scheduleType == ScheduleType.WEEKLY ) && ( daysOfWeek.size() > 0 ) ) {
+    } else if ( ( scheduleType == ScheduleType.WEEKLY ) && !daysOfWeek.isEmpty() ) {
       schedule
           .put(
               "complexJobTrigger", getJsonComplexTrigger( scheduleType, null, null, scheduleEditor.getRecurrenceEditor().getSelectedDaysOfWeek(), startDateTime, endDate ) ); //$NON-NLS-1$
@@ -1040,10 +1042,40 @@ public class ScheduleRecurrenceDialog extends AbstractWizardDialog {
     if ( startTime == null || startTime.length() < 1 ) {
       return 0;
     }
-    int afternoonOffset = startTime.endsWith( TimeUtil.TimeOfDay.PM.toString() ) ? 12 : 0; //$NON-NLS-1$
+    int afternoonOffset = startTime.endsWith( TimeUtil.TimeOfDay.PM.toString() ) ? 12 : 0;
     int hour = Integer.parseInt( startTime.substring( 0, startTime.indexOf( ':' ) ) );
     hour += afternoonOffset;
     return hour;
+  }
+
+  /**
+   * <p>Returns a {@link Date} instance corresponding to the given date and time in the specified timezone.</p>
+   *
+   * @param timezone the timezone
+   * @param date     a {@link Date} instance from where to extract the year, month and day
+   * @param time     a string representing the time from where to extract the hour and minute
+   * @return {@link Date} instance corresponding to the given parameters
+   */
+  public Date getDateTime( String timezone, Date date, String time ) {
+    int startHour = getStartHour( time );
+    int startMin = getStartMin( time );
+    int startYear = date.getYear() + 1900;
+    int startMonth = date.getMonth() + 1;
+    int startDay = date.getDate();
+
+    int tzOffset = TimeUtil.getTimezoneOffset( timezone );
+    int tzOffsetHour = tzOffset / 60;
+    int tzOffsetMin = tzOffset - 60 * tzOffsetHour;
+
+    String fullDateString = FOUR_DIGITS_FORMAT.format( startYear ) + "-"
+      + TWO_DIGITS_FORMAT.format( startMonth ) + "-"
+      + TWO_DIGITS_FORMAT.format( startDay ) + " "
+      + TWO_DIGITS_FORMAT.format( startHour ) + ":"
+      + TWO_DIGITS_FORMAT.format( startMin ) + ":00+"
+      + TWO_DIGITS_FORMAT.format( tzOffsetHour ) + ":"
+      + TWO_DIGITS_FORMAT.format( tzOffsetMin );
+
+    return new Date( fullDateString );
   }
 
   public Boolean getDone() {

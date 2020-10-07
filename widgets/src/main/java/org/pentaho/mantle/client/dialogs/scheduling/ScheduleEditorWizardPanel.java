@@ -12,7 +12,7 @@
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU Lesser General Public License for more details.
  *
- * Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
+ * Copyright (c) 2002-2020 Hitachi Vantara..  All rights reserved.
  */
 
 package org.pentaho.mantle.client.dialogs.scheduling;
@@ -134,13 +134,23 @@ public class ScheduleEditorWizardPanel extends AbstractWizardPanel {
   }
 
   public String getTimeZone() {
-    if ( scheduleEditor.getTimeZonePicker() != null ) {
-      ListBox tzPicker = scheduleEditor.getTimeZonePicker();
+    ListBox tzPicker = scheduleEditor.getTimeZonePicker();
+    if ( tzPicker != null ) {
       int selIndex = tzPicker.getSelectedIndex();
       if ( selIndex != -1 ) { // Something is selected
         return tzPicker.getValue( selIndex );
       }
-      return null;
+    }
+    return null;
+  }
+
+  public String getTimeZoneText() {
+    ListBox tzPicker = scheduleEditor.getTimeZonePicker();
+    if ( tzPicker != null ) {
+      int selIndex = tzPicker.getSelectedIndex();
+      if ( selIndex != -1 ) { // Something is selected
+        return tzPicker.getItemText( selIndex );
+      }
     }
     return null;
   }

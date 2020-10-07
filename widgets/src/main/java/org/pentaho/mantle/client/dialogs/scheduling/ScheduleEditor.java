@@ -12,7 +12,7 @@
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU Lesser General Public License for more details.
  *
- * Copyright (c) 2002-2018 Hitachi Vantara..  All rights reserved.
+ * Copyright (c) 2002-2020 Hitachi Vantara..  All rights reserved.
  */
 
 package org.pentaho.mantle.client.dialogs.scheduling;
@@ -74,8 +74,8 @@ import com.google.gwt.user.datepicker.client.CalendarUtil;
  */
 public class ScheduleEditor extends VerticalPanel implements IChangeHandler {
 
-  private static final int DEFAULT_START_HOUR = 12; //$NON-NLS-1$
-  private static final int DEFAULT_START_MINUTE = 0; //$NON-NLS-1$
+  private static final int DEFAULT_START_HOUR = 12;
+  private static final int DEFAULT_START_MINUTE = 0;
 
   public static enum ENDS_TYPE {
     TIME, DURATION
@@ -214,6 +214,8 @@ public class ScheduleEditor extends VerticalPanel implements IChangeHandler {
   private final Date defaultDate = initDefaultDate();
 
   private String targetTimezone = null;
+
+  private String serverTimezone = null;
 
   @SuppressWarnings( "deprecation" )
   private Date initDefaultDate() {
@@ -552,6 +554,7 @@ public class ScheduleEditor extends VerticalPanel implements IChangeHandler {
           for ( int i = 0; i < timeZonePicker.getItemCount(); i++ ) {
             if ( timeZonePicker.getValue( i ).equalsIgnoreCase( serverTZId ) ) {
               timeZonePicker.setSelectedIndex( i );
+              serverTimezone = timeZonePicker.getItemText( i );
               break;
             }
           }
@@ -1032,6 +1035,9 @@ public class ScheduleEditor extends VerticalPanel implements IChangeHandler {
     if ( minutesListBox != null ) {
       minutesListBox.addChangeHandler( changeHandler );
     }
+    if ( timeZonePicker != null ) {
+      timeZonePicker.addChangeHandler( changeHandler );
+    }
 
     if ( startTimePicker != null ) {
       startTimePicker.setOnChangeHandler( handler );
@@ -1062,5 +1068,9 @@ public class ScheduleEditor extends VerticalPanel implements IChangeHandler {
       }
     }
     return targetTimezone;
+  }
+
+  public String getServerTimezone() {
+    return serverTimezone;
   }
 }

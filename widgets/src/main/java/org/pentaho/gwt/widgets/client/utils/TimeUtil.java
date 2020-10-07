@@ -12,7 +12,7 @@
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU Lesser General Public License for more details.
  *
- * Copyright (c) 2002-2018 Hitachi Vantara..  All rights reserved.
+ * Copyright (c) 2002-2020 Hitachi Vantara..  All rights reserved.
  */
 
 package org.pentaho.gwt.widgets.client.utils;
@@ -30,9 +30,16 @@ import com.google.gwt.i18n.client.DateTimeFormat;
 public class TimeUtil {
 
   private static final WidgetsLocalizedMessages MSGS = WidgetsLocalizedMessagesSingleton.getInstance().getMessages();
+
+  private static final String UTC = "UTC";
+
+  private static final String Z = "Z";
+
   public static final int HOURS_IN_DAY = 24;
 
   public static final int MINUTES_IN_HOUR = 60;
+
+  public static final int MINUTES_IN_DAY = HOURS_IN_DAY * MINUTES_IN_HOUR;
 
   public static final int SECONDS_IN_MINUTE = 60;
 
@@ -481,122 +488,105 @@ public class TimeUtil {
     return isNumBetween( 0, num, 23 );
   }
 
-  // private static final String MATCH_DATE_STRING_RE = "^[0-9]{1,2}$";
-  // public boolean isDateStr( String strInt ) {
-  // return MATCH_DATE_STRING_RE.matches( strInt );
-  // }
-
-  public static void main( String[] args ) {
-    assert daysToSecs( 13 ) == 1123200 : ""; //$NON-NLS-1$
-    assert daysToSecs( 13 ) != 1123201 : ""; //$NON-NLS-1$
-    assert daysToSecs( 13 ) != 1123199 : ""; //$NON-NLS-1$
-
-    assert hoursToSecs( 13 ) == 46800 : ""; //$NON-NLS-1$
-    assert hoursToSecs( 13 ) != 46801 : ""; //$NON-NLS-1$
-    assert hoursToSecs( 13 ) != 46799 : ""; //$NON-NLS-1$
-
-    assert minutesToSecs( 13 ) == 780 : ""; //$NON-NLS-1$
-    assert minutesToSecs( 13 ) != 781 : ""; //$NON-NLS-1$
-    assert minutesToSecs( 13 ) != 779 : ""; //$NON-NLS-1$
-
-    assert secsToDays( 1123200 ) == 13 : ""; //$NON-NLS-1$
-    assert secsToDays( 1123201 ) != 13 : ""; //$NON-NLS-1$
-    assert secsToDays( 1123199 ) != 13 : ""; //$NON-NLS-1$
-
-    assert secsToHours( 46800 ) == 13 : ""; //$NON-NLS-1$
-    assert secsToHours( 46801 ) != 13 : ""; //$NON-NLS-1$
-    assert secsToHours( 46799 ) != 13 : ""; //$NON-NLS-1$
-
-    assert secsToMinutes( 780 ) == 13 : ""; //$NON-NLS-1$
-    assert secsToMinutes( 781 ) != 13 : ""; //$NON-NLS-1$
-    assert secsToMinutes( 779 ) != 13 : ""; //$NON-NLS-1$
-
-    assert isSecondsWholeDay( 1123200 ) : ""; //$NON-NLS-1$
-    assert !isSecondsWholeDay( 1123201 ) : ""; //$NON-NLS-1$
-    assert !isSecondsWholeDay( 1123199 ) : ""; //$NON-NLS-1$
-
-    assert isSecondsWholeHour( 46800 ) : ""; //$NON-NLS-1$
-    assert !isSecondsWholeHour( 46801 ) : ""; //$NON-NLS-1$
-    assert !isSecondsWholeHour( 46799 ) : ""; //$NON-NLS-1$
-
-    assert isSecondsWholeMinute( 780 ) : ""; //$NON-NLS-1$
-    assert !isSecondsWholeMinute( 781 ) : ""; //$NON-NLS-1$
-    assert !isSecondsWholeMinute( 779 ) : ""; //$NON-NLS-1$
-
-    assert getTimeOfDayBy0To23Hour( "0" ) == TimeOfDay.AM : "hour 0 is AM"; //$NON-NLS-1$ //$NON-NLS-2$
-    assert getTimeOfDayBy0To23Hour( "11" ) == TimeOfDay.AM : "hour 11 is AM"; //$NON-NLS-1$ //$NON-NLS-2$
-    assert getTimeOfDayBy0To23Hour( "12" ) == TimeOfDay.PM : "hour 12 is PM"; //$NON-NLS-1$ //$NON-NLS-2$
-    assert getTimeOfDayBy0To23Hour( "13" ) == TimeOfDay.PM : "hour 13 is PM"; //$NON-NLS-1$ //$NON-NLS-2$
-    assert getTimeOfDayBy0To23Hour( "23" ) == TimeOfDay.PM : "hour 23 is PM"; //$NON-NLS-1$ //$NON-NLS-2$
-
-    assert to12HourClock( 0 ) == ( 1 ) : "0 is 1"; //$NON-NLS-1$
-    assert to12HourClock( 11 ) == ( 12 ) : "11 is 12"; //$NON-NLS-1$
-    assert to12HourClock( 12 ) == ( 1 ) : "12 is 1"; //$NON-NLS-1$
-    assert to12HourClock( 23 ) == ( 11 ) : "23 is 11"; //$NON-NLS-1$
-
-    System.out.println( "done" ); //$NON-NLS-1$
-  }
-
   /**
-   * Calculates day variance based on target timezone information.
+   * <p>Calculates day variance between two timezones for a specified time (hour and minute).</p>
+   * <p/>
+   * <p>There are two different types of target timezone information which are supported:</p>
+   * <lo>
+   * <li>timezone id - e.g. "Eastern Daylight Time (UTC-0500)"</li>
+   * <li>dateTime format - e.g. "2018-02-27T07:30:00-05:00"</li>
+   * </lo>
    *
-   * There are two different types of target timezone information which should be handled:
-   * timezone id - e.g. "Eastern Daylight Time (UTC-0500)"
-   * dateTime format - e.g. "2018-02-27T07:30:00-05:00"
-   *
-   * @param selectedTime The time selected by the user which is compared against the timezone diff between client and target
-   * @param targetTimezoneInfo The target timezone information in the formats described above
-   * @return The calculated day variance
+   * @param originTimezoneInfo The origin timezone information in one of the formats described above
+   * @param targetTimezoneInfo The target timezone information in one of the formats described above
+   * @param originHour The hour value in the origin
+   * @param originMinute The minute value in the origin
+   * @return The calculated day variance for the given time
    */
-  public static int getDayVariance( int selectedTime, String targetTimezoneInfo ) {
+  public static int getDayVariance( String originTimezoneInfo, String targetTimezoneInfo, int originHour,
+                                    int originMinute ) {
 
-    boolean isTimezoneId = targetTimezoneInfo.contains( "UTC" );
+    int originOffset =
+      ( null != originTimezoneInfo ) ? getTimezoneOffset( originTimezoneInfo ) : -getClientOffsetTimeZone();
+    int targetOffset = getTimezoneOffset( targetTimezoneInfo );
 
-    int targetOffset = targetTimezoneInfo.endsWith( "Z" ) ? 0 : getTargetOffset( targetTimezoneInfo, isTimezoneId );
-    int clientOffset = -getClientOffsetTimeZone() / 60;
+    int allMinutesOrigin = MINUTES_IN_HOUR * originHour + originMinute;
 
-    // if client side has the timezone ahead of target's timezone, then we should compare against client's start of the day
-    // client2target -> -1 and target2client -> +1
-    if ( clientOffset > targetOffset ) {
-      int timezoneDiff = targetOffset - clientOffset;
-      if ( selectedTime + timezoneDiff < 0 ) {
-        return isTimezoneId ? -1 : 1;
+    if ( originOffset > targetOffset ) {
+      // origin is ahead of target
+      int timezoneDiff = targetOffset - originOffset;
+      int allMinutesTarget = allMinutesOrigin + timezoneDiff;
+      if ( allMinutesTarget < 0 ) {
+        // It's possible to have a difference greater than 1 day between timezones
+        return ( allMinutesTarget >= -MINUTES_IN_DAY ) ? -1 : -2;
       }
-    // if client side has the timezone behind of target's timezone, then we should compare against client's end of the day
-    // client2target -> +1 and target2client -> -1
     } else {
-      int timezoneDiff = clientOffset - targetOffset;
-      if ( selectedTime - timezoneDiff > 23 ) {
-        return isTimezoneId ? 1 : -1;
+      // target is ahead of (or the same as) origin
+      int timezoneDiff = originOffset - targetOffset;
+      int allMinutesTarget = allMinutesOrigin - timezoneDiff;
+      if ( allMinutesTarget >= MINUTES_IN_DAY ) {
+        // It's possible to have a difference greater than 1 day between timezones
+        return ( allMinutesTarget < 2 * MINUTES_IN_DAY ) ? 1 : 2;
       }
     }
+
     return 0;
   }
 
   /**
-   * Retrieves the target timezone offset based on the target's timezone information.
+   * <p>Calculates day variance based on target timezone information.</p>
+   * <p/>
+   * <p><b>Please do not use this method:</b></p>
+   * <lo>
+   * <li>it only handles 'whole hour' timezones</li>
+   * <li>it only accepts the target timezone (the way the origin timezone is calculated is not reliable)</li>
+   * </lo>
+   * <p/>
+   * <p>To support all timezone variants, use {@link #getDayVariance(String, String, int, int)}.</p>
    *
-   * Note: The following two types of timezone information are supported:
-   * timezone id - e.g. "Eastern Daylight Time (UTC-0500)"
-   * dateTime format - e.g. "2018-02-27T07:30:00-05:00"
-   *
-   * @param targetTimezoneInfo The target timezone information.
-   * @param isTimezoneId True if the format is timezone id, false if the format is dateTime.
-   * @return The target's timezone offset
+   * @param selectedTime The time selected by the user which is compared against the timezone diff between client and target
+   * @param targetTimezoneInfo The target timezone information in the formats described above
+   * @return The calculated day variance
+   * @deprecated Please use {@link #getDayVariance(String, String, int, int)}
    */
-  private static int getTargetOffset( String targetTimezoneInfo, boolean isTimezoneId ) {
+  @Deprecated
+  public static int getDayVariance( int selectedTime, String targetTimezoneInfo ) {
+    return getDayVariance( null, targetTimezoneInfo, selectedTime, 0 );
+  }
+
+  /**
+   * <p>Retrieves the timezone offset (in minutes) based on the timezone information.</p>
+   * <p/>
+   * <p>Note: The following two types of timezone information are supported:</p>
+   * <lo>
+   * <li>timezone id - e.g. "Eastern Daylight Time (UTC-0500)"</li>
+   * <li>dateTime format - e.g. "2018-02-27T07:30:00-05:00"</li>
+   * </lo>
+   *
+   * @param timezoneInfo the timezone information
+   * @return timezone offset in minutes
+   */
+  public static int getTimezoneOffset( String timezoneInfo ) {
     String targetTzOffset;
-    int targetOffset;
 
-    if ( isTimezoneId ) {
-      targetTzOffset = targetTimezoneInfo.substring( targetTimezoneInfo.indexOf( "(UTC" ) + 4, targetTimezoneInfo.length() - 3 );
+    if ( timezoneInfo.endsWith( Z ) ) {
+      return 0;
+    } else if ( timezoneInfo.contains( UTC ) ) {
+      targetTzOffset =
+        timezoneInfo.substring( timezoneInfo.indexOf( "(UTC" ) + 4, timezoneInfo.length() - 1 );
     } else {
-      int startingOffsetChar = Character.isDigit( targetTimezoneInfo.charAt( targetTimezoneInfo.length() - 6 ) ) ? 5 : 6;
-      targetTzOffset = targetTimezoneInfo.substring( targetTimezoneInfo.length() - startingOffsetChar, targetTimezoneInfo.length() - 3 );
+      int startingOffsetChar =
+        Character.isDigit( timezoneInfo.charAt( timezoneInfo.length() - 6 ) ) ? 5 : 6;
+      targetTzOffset = timezoneInfo.substring( timezoneInfo.length() - startingOffsetChar );
+      targetTzOffset = targetTzOffset.replace( ":", "" );
     }
-    targetOffset = Integer.valueOf( targetTzOffset.substring( 1 ) );
 
-    // Determine the signal separately, otherwise a NumberFormatException will occur if we try to convert directly the signal to integer.
+    int hour = Integer.parseInt( targetTzOffset.substring( 1, 3 ) );
+    int minute = Integer.parseInt( targetTzOffset.substring( 3 ) );
+    int targetOffset = MINUTES_IN_HOUR * hour + minute;
+
+    // Determine the signal separately, otherwise a NumberFormatException will occur if we try to convert directly
+    // the signal to integer.
     if ( targetTzOffset.charAt( 0 ) == '-' ) {
       targetOffset = -targetOffset;
     }
@@ -612,10 +602,11 @@ public class TimeUtil {
    */
   public static int getDayOfWeek( DayOfWeek currentDay, int dayVariance ) {
 
-    if ( dayVariance == 0 ) {
-      return currentDay.ordinal();
+    for ( int i = Math.abs( dayVariance ); i > 0; --i ) {
+      currentDay = DayOfWeek.get( ( dayVariance > 0 ) ? currentDay.getNext() : currentDay.getPrevious() );
     }
-    return ( dayVariance > 0 ) ? currentDay.getNext() : currentDay.getPrevious();
+
+    return currentDay.ordinal();
   }
 
   public static native int getClientOffsetTimeZone() /*-{
